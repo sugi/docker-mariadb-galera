@@ -1,0 +1,7 @@
+[galera]
+wsrep_provider = /usr/lib/galera/libgalera_smm.so
+binlog_format = ROW
+log_bin = /var/log/mysql/mysql-bin.log
+wsrep_sst_method = mysqldump
+#wsrep_on = ON
+#wsrep_debug = ON

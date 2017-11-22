@@ -41,7 +41,7 @@ file_env() {
 }
 
 _check_config() {
-	toRun=( "$@" --verbose --help )
+	toRun=( "$@" --verbose --help --log-bin-index="$(mktemp -u)" )
 	if ! errors="$("${toRun[@]}" 2>&1 >/dev/null)"; then
 		cat >&2 <<-EOM
 
@@ -66,8 +66,10 @@ _get_config() {
 if [ "$1" = 'mysqld' -a -z "$wantHelp" -a "$(id -u)" = '0' ]; then
 	_check_config "$@"
 	DATADIR="$(_get_config 'datadir' "$@")"
-	mkdir -p "$DATADIR"
-	chown -R mysql:mysql "$DATADIR"
+	LOGDIR="${LOGDIR:-/var/log/mysql}"
+	RUNDIR="${RUNDIR:-/var/run/mysqld}
+	mkdir -p "$DATADIR" "$LOGDIR" "$RUNDIR"
+	chown -R mysql:mysql "$DATADIR" "$LOGDIR" "$RUNDIR"
 	exec gosu mysql "$BASH_SOURCE" "$@"
 fi
 
@@ -88,15 +90,8 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" ]; then
 		mkdir -p "$DATADIR"
 
 		echo 'Initializing database'
-		"$@" --initialize-insecure
+		mysql_install_db --datadir="$DATADIR" --rpm
 		echo 'Database initialized'
-
-		if command -v mysql_ssl_rsa_setup > /dev/null && [ ! -e "$DATADIR/server-key.pem" ]; then
-			# https://github.com/mysql/mysql-server/blob/23032807537d8dd8ee4ec1c4d40f0633cd4e12f9/packaging/deb-in/extra/mysql-systemd-start#L81-L84
-			echo 'Initializing certificates'
-			mysql_ssl_rsa_setup --datadir="$DATADIR"
-			echo 'Certificates initialized'
-		fi
 
 		SOCKET="$(_get_config 'socket' "$@")"
 		"$@" --skip-networking --socket="${SOCKET}" &
@@ -184,11 +179,6 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" ]; then
 			echo
 		done
 
-		if [ ! -z "$MYSQL_ONETIME_PASSWORD" ]; then
-			"${mysql[@]}" <<-EOSQL
-				ALTER USER 'root'@'%' PASSWORD EXPIRE;
-			EOSQL
-		fi
 		if ! kill -s TERM "$pid" || ! wait "$pid"; then
 			echo >&2 'MySQL init process failed.'
 			exit 1
@@ -198,6 +188,10 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" ]; then
 		echo 'MySQL init process done. Ready for start up.'
 		echo
 	fi
+fi
+
+if [[ "$1" = "mysqld" && "$WSREP" =~ ^[1tTyY] ]]; then
+	set -- "$@" --wsrep-on=ON
 fi
 
 exec "$@"

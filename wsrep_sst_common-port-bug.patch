@@ -1,0 +1,19 @@
+48c48
+<         readonly WSREP_SST_OPT_PORT=$(echo $WSREP_SST_OPT_ADDR | \
+---
+>         readonly __WSREP_SST_OPT_ADDRESS_PORT=$(echo $WSREP_SST_OPT_ADDR | \
+125a126,139
+> 
+> 
+> # if both --port and --address contain port we ensure that it equals
+> # if port is specified only in --address we assign it to WSREP_SST_OPT_PORT
+> set +u
+> if [ ! -z "$__WSREP_SST_OPT_ADDRESS_PORT" ] && [ ! -z "$WSREP_SST_OPT_PORT" ] ; then
+>     if [ "$__WSREP_SST_OPT_ADDRESS_PORT" != "$WSREP_SST_OPT_PORT" ] ; then
+>         ( >&2 echo "port in --port doesn\'t match port in --address ($WSREP_SST_OPT_PORT) vs ($__WSREP_SST_OPT_ADDRESS_PORT)" )
+>         exit 1
+>     fi
+> elif [ -z "$WSREP_SST_OPT_PORT" ] && [ ! -z "$__WSREP_SST_OPT_ADDRESS_PORT" ] ; then
+>     readonly WSREP_SST_OPT_PORT="$__WSREP_SST_OPT_ADDRESS_PORT"
+> fi
+> set -u
