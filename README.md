@@ -2,6 +2,12 @@
 
 Docker build file for mariadb galera cluster based on official mariadb image.
 
+You need to set environment `WSREP` to y for adding --wsrep-on=ON option to mysqld.
+
+```
+WSREP=y
+```
+
 ## Sample config for cluster
 
 You need to drop cluster setting into /etc/mysql/local.conf.d by volume mapping.
